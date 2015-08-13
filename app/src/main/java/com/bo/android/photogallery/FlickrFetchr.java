@@ -27,16 +27,16 @@ public class FlickrFetchr {
         apiKey = context.getString(R.string.frikr_api_key);
     }
 
-    private byte[] getUrlBytes(String urlSpec) throws IOException {
+    public byte[] getUrlBytes(String urlSpec) throws IOException {
         URL url = new URL(urlSpec);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         try {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
             InputStream in = connection.getInputStream();
             if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
-                return null;
+                return new byte[0];
             }
 
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
             byte[] buffer = new byte[1024];
             int bytesRead;
             while ((bytesRead = in.read(buffer)) > 0) {
