@@ -2,7 +2,6 @@ package com.bo.android.photogallery;
 
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.net.Uri;
 import android.util.Log;
 import org.xmlpull.v1.XmlPullParser;
@@ -21,6 +20,16 @@ import java.util.List;
 public class FlickrFetchr {
 
     private static final String TAG = "FlickrFetchr";
+    public static final String PREF_SEARCH_QUERY = "searchQuery";
+    public static final String ENDPOINT = "https://api.flickr.com/services/rest/";
+    public static final String PARAM_METHOD = "method";
+    public static final String PARAM_PAGE = "page";
+    public static final String PARAM_PER_PAGE = "per_page";
+    public static final String PARAM_API_KEY = "api_key";
+    public static final String EXTRA_SMALL_URL = "url_s";
+    private static final String PARAM_EXTRAS = "extras";
+    private static final String PARAM_TEXT = "text";
+
     private final String apiKey;
 
     public FlickrFetchr(Context context) {
@@ -54,15 +63,29 @@ public class FlickrFetchr {
     }
 
     public List<GalleryItem> fetchItems(int page, int perPage) {
-        ArrayList<GalleryItem> items = new ArrayList<>();
+        String url = Uri.parse(ENDPOINT).buildUpon()
+                .appendQueryParameter(PARAM_METHOD, "flickr.photos.getRecent")
+                .appendQueryParameter(PARAM_PAGE, String.valueOf(page))
+                .appendQueryParameter(PARAM_PER_PAGE, String.valueOf(perPage))
+                .appendQueryParameter(PARAM_API_KEY, apiKey)
+                .appendQueryParameter(PARAM_EXTRAS, EXTRA_SMALL_URL)
+                .build().toString();
+        return downloadItems(url);
+    }
+
+    public List<GalleryItem> search(String query) {
+        String url = Uri.parse(ENDPOINT).buildUpon()
+                .appendQueryParameter(PARAM_METHOD, "flickr.photos.search")
+                .appendQueryParameter(PARAM_API_KEY, apiKey)
+                .appendQueryParameter(PARAM_EXTRAS, EXTRA_SMALL_URL)
+                .appendQueryParameter(PARAM_TEXT, query)
+                .build().toString();
+        return downloadItems(url);
+    }
+
+    private List<GalleryItem> downloadItems(String url) {
+        List<GalleryItem> items = new ArrayList<>();
         try {
-            String url = Uri.parse("https://api.flickr.com/services/rest/").buildUpon()
-                    .appendQueryParameter("method", "flickr.photos.getRecent")
-                    .appendQueryParameter("page", String.valueOf(page))
-                    .appendQueryParameter("per_page", String.valueOf(perPage))
-                    .appendQueryParameter("api_key", apiKey)
-                    .appendQueryParameter("extras", "url_s")
-                    .build().toString();
             String xmlString = getUrl(url);
             XmlPullParser parser = XmlPullParserFactory.newInstance().newPullParser();
             parser.setInput(new StringReader(xmlString));
@@ -78,13 +101,10 @@ public class FlickrFetchr {
 
         while (eventType != XmlPullParser.END_DOCUMENT) {
             if (eventType == XmlPullParser.START_TAG && "photo".equals(parser.getName())) {
-                String id = parser.getAttributeValue(null, "id");
-                String caption = parser.getAttributeValue(null, "title");
-                String smallUrl = parser.getAttributeValue(null, "url_s");
                 GalleryItem item = new GalleryItem();
-                item.setId(id);
-                item.setCaption(caption);
-                item.setUrl(smallUrl);
+                item.setId(parser.getAttributeValue(null, "id"));
+                item.setCaption(parser.getAttributeValue(null, "title"));
+                item.setUrl(parser.getAttributeValue(null, "url_s"));
                 items.add(item);
             }
             eventType = parser.next();

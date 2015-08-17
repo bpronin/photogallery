@@ -2,19 +2,24 @@ package com.bo.android.photogallery;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.SearchManager;
+import android.app.SearchableInfo;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
+import android.view.*;
 import android.widget.ArrayAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
+import android.widget.SearchView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,21 +43,8 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
-
-        thumbnailDownloader = new ThumbnailDownloader<>(getActivity(), new Handler());
-        thumbnailDownloader.setListener(new ThumbnailDownloader.Listener<ImageView>() {
-
-            @Override
-            public void onThumbnailDownloaded(ImageView imageView, Bitmap thumbnail) {
-                if (isVisible()) {
-                    imageView.setImageBitmap(thumbnail);
-                }
-            }
-        });
-        thumbnailDownloader.start();
-        thumbnailDownloader.getLooper();
-        Log.i(TAG, "Background thread started");
-
+        setHasOptionsMenu(true);
+        setupThumbnailDownloader();
         adapter = new PhotoGalleryGridAdapter(getActivity());
     }
 
@@ -70,7 +62,7 @@ public class PhotoGalleryFragment extends Fragment {
 
         setupProgressBar(view);
         setupGrid(view);
-        loadItems(0);
+        updateItems(0);
 
         return view;
     }
@@ -80,6 +72,40 @@ public class PhotoGalleryFragment extends Fragment {
         super.onDestroyView();
         thumbnailDownloader.clearQueue();
     }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.fragment_photo_gallery, menu);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+            MenuItem searchItem = menu.findItem(R.id.menu_item_search);
+            SearchView searchView = (SearchView) searchItem.getActionView();
+            SearchManager searchManager = (SearchManager) getActivity().getSystemService(Context.SEARCH_SERVICE);
+            ComponentName name = getActivity().getComponentName();
+            SearchableInfo searchInfo = searchManager.getSearchableInfo(name);
+            searchView.setSearchableInfo(searchInfo);
+        }
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.menu_item_search:
+                getActivity().onSearchRequested();
+                return true;
+            case R.id.menu_item_clear:
+                PreferenceManager.getDefaultSharedPreferences(getActivity())
+                        .edit()
+                        .putString(FlickrFetchr.PREF_SEARCH_QUERY, null)
+                        .commit();
+                updateItems(0);
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
     private void setupGrid(View view) {
         GridView gridView = (GridView) view.findViewById(R.id.grid_view);
         gridView.setAdapter(adapter);
@@ -87,7 +113,7 @@ public class PhotoGalleryFragment extends Fragment {
 
             @Override
             public void onLoadMore(int page, int totalItemsCount) {
-                loadItems(page);
+                updateItems(page);
             }
         });
     }
@@ -97,15 +123,41 @@ public class PhotoGalleryFragment extends Fragment {
         progressContainer.setVisibility(View.INVISIBLE);
     }
 
-    private void loadItems(int page) {
+    public void updateItems(int page) {
         new FetchItemsTask().execute(page, ITEMS_PER_PAGE);
+    }
+
+    private void setupThumbnailDownloader() {
+        thumbnailDownloader = new ThumbnailDownloader<>(getActivity(), new Handler());
+        thumbnailDownloader.setListener(new ThumbnailDownloader.Listener<ImageView>() {
+
+            @Override
+            public void onThumbnailDownloaded(ImageView imageView, Bitmap thumbnail) {
+                if (isVisible()) {
+                    imageView.setImageBitmap(thumbnail);
+                }
+            }
+        });
+        thumbnailDownloader.start();
+        thumbnailDownloader.getLooper();
+        Log.i(TAG, "Background thread started");
     }
 
     private class FetchItemsTask extends AsyncTask<Integer, Void, List<GalleryItem>> {
 
         @Override
         protected List<GalleryItem> doInBackground(Integer... params) {
-            return new FlickrFetchr(getActivity()).fetchItems(params[0], ITEMS_PER_PAGE);
+            Activity activity = getActivity();
+            if (activity == null) {
+                return new ArrayList<>();
+            }
+            SharedPreferences pm = PreferenceManager.getDefaultSharedPreferences(activity);
+            String query = pm.getString(FlickrFetchr.PREF_SEARCH_QUERY, null);
+            if (query != null) {
+                return new FlickrFetchr(getActivity()).search(query);
+            } else {
+                return new FlickrFetchr(getActivity()).fetchItems(params[0], ITEMS_PER_PAGE);
+            }
         }
 
         @Override
@@ -136,7 +188,7 @@ public class PhotoGalleryFragment extends Fragment {
             }
 
             ImageView imageView = (ImageView) view.findViewById(R.id.gallery_item_image_view);
-            imageView.setImageResource(R.drawable.abc_btn_rating_star_off_mtrl_alpha);
+            imageView.setImageResource(R.mipmap.ic_launcher);
             GalleryItem item = getItem(position);
             thumbnailDownloader.queueThumbnail(imageView, item.getUrl());
 
