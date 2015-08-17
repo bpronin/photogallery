@@ -2,11 +2,8 @@ package com.bo.android.photogallery;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
-import android.app.SearchManager;
-import android.app.SearchableInfo;
-import android.content.ComponentName;
-import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -19,7 +16,6 @@ import android.view.*;
 import android.widget.ArrayAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
-import android.widget.SearchView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -78,6 +74,7 @@ public class PhotoGalleryFragment extends Fragment {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.fragment_photo_gallery, menu);
 
+/*
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
             MenuItem searchItem = menu.findItem(R.id.menu_item_search);
             SearchView searchView = (SearchView) searchItem.getActionView();
@@ -86,13 +83,14 @@ public class PhotoGalleryFragment extends Fragment {
             SearchableInfo searchInfo = searchManager.getSearchableInfo(name);
             searchView.setSearchableInfo(searchInfo);
         }
+*/
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.menu_item_search:
-                getActivity().onSearchRequested();
+                search();
                 return true;
             case R.id.menu_item_clear:
                 PreferenceManager.getDefaultSharedPreferences(getActivity())
@@ -103,6 +101,19 @@ public class PhotoGalleryFragment extends Fragment {
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private String getSearchQuery() {
+        SharedPreferences pm = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        return pm.getString(FlickrFetchr.PREF_SEARCH_QUERY, null);
+    }
+
+    private void search() {
+        if ((getActivity().getResources().getConfiguration().uiMode & Configuration.UI_MODE_TYPE_MASK)
+                != Configuration.UI_MODE_TYPE_TELEVISION) {
+
+            getActivity().startSearch(getSearchQuery(), true, null, false);
         }
     }
 
@@ -151,8 +162,7 @@ public class PhotoGalleryFragment extends Fragment {
             if (activity == null) {
                 return new ArrayList<>();
             }
-            SharedPreferences pm = PreferenceManager.getDefaultSharedPreferences(activity);
-            String query = pm.getString(FlickrFetchr.PREF_SEARCH_QUERY, null);
+            String query = getSearchQuery();
             if (query != null) {
                 return new FlickrFetchr(getActivity()).search(query);
             } else {
