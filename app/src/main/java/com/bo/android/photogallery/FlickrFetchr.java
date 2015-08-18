@@ -5,7 +5,6 @@ import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
 import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
 
 import java.io.ByteArrayOutputStream;
@@ -62,7 +61,7 @@ public class FlickrFetchr {
         return new String(getUrlBytes(urlSpec));
     }
 
-    public List<GalleryItem> fetchItems(int page, int perPage) {
+    public FlickrItems fetchItems(int page, int perPage) {
         String url = Uri.parse(ENDPOINT).buildUpon()
                 .appendQueryParameter(PARAM_METHOD, "flickr.photos.getRecent")
                 .appendQueryParameter(PARAM_PAGE, String.valueOf(page))
@@ -73,7 +72,7 @@ public class FlickrFetchr {
         return downloadItems(url);
     }
 
-    public List<GalleryItem> search(String query) {
+    public FlickrItems search(String query) {
         String url = Uri.parse(ENDPOINT).buildUpon()
                 .appendQueryParameter(PARAM_METHOD, "flickr.photos.search")
                 .appendQueryParameter(PARAM_API_KEY, apiKey)
@@ -83,31 +82,37 @@ public class FlickrFetchr {
         return downloadItems(url);
     }
 
-    private List<GalleryItem> downloadItems(String url) {
+    private FlickrItems downloadItems(String url) {
+        int total = 0;
+        int pages = 0;
         List<GalleryItem> items = new ArrayList<>();
+
         try {
             String xmlString = getUrl(url);
             XmlPullParser parser = XmlPullParserFactory.newInstance().newPullParser();
             parser.setInput(new StringReader(xmlString));
-            parseItems(items, parser);
+
+            int eventType = parser.next();
+            while (eventType != XmlPullParser.END_DOCUMENT) {
+                if (eventType == XmlPullParser.START_TAG) {
+                    if ("photos".equals(parser.getName())) {
+                        total = Integer.valueOf(parser.getAttributeValue(null, "total"));
+                        pages = Integer.valueOf(parser.getAttributeValue(null, "pages"));
+                    } else if ("photo".equals(parser.getName())) {
+                        GalleryItem item = new GalleryItem();
+                        item.setId(parser.getAttributeValue(null, "id"));
+                        item.setCaption(parser.getAttributeValue(null, "title"));
+                        item.setUrl(parser.getAttributeValue(null, "url_s"));
+                        items.add(item);
+                    }
+                }
+                eventType = parser.next();
+            }
         } catch (Exception x) {
             Log.e(TAG, "Failed to fetch items", x);
         }
-        return items;
+
+        return new FlickrItems(items, total, pages);
     }
 
-    private void parseItems(List<GalleryItem> items, XmlPullParser parser) throws XmlPullParserException, IOException {
-        int eventType = parser.next();
-
-        while (eventType != XmlPullParser.END_DOCUMENT) {
-            if (eventType == XmlPullParser.START_TAG && "photo".equals(parser.getName())) {
-                GalleryItem item = new GalleryItem();
-                item.setId(parser.getAttributeValue(null, "id"));
-                item.setCaption(parser.getAttributeValue(null, "title"));
-                item.setUrl(parser.getAttributeValue(null, "url_s"));
-                items.add(item);
-            }
-            eventType = parser.next();
-        }
-    }
 }

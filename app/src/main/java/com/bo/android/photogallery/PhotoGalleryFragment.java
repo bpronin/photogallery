@@ -16,6 +16,7 @@ import android.view.*;
 import android.widget.ArrayAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -154,13 +155,13 @@ public class PhotoGalleryFragment extends Fragment {
         Log.i(TAG, "Background thread started");
     }
 
-    private class FetchItemsTask extends AsyncTask<Integer, Void, List<GalleryItem>> {
+    private class FetchItemsTask extends AsyncTask<Integer, Void, FlickrItems> {
 
         @Override
-        protected List<GalleryItem> doInBackground(Integer... params) {
+        protected FlickrItems doInBackground(Integer... params) {
             Activity activity = getActivity();
             if (activity == null) {
-                return new ArrayList<>();
+                return new FlickrItems();
             }
             String query = getSearchQuery();
             if (query != null) {
@@ -177,13 +178,47 @@ public class PhotoGalleryFragment extends Fragment {
         }
 
         @Override
-        protected void onPostExecute(List<GalleryItem> items) {
-            adapter.addAll(items);
+        protected void onPostExecute(FlickrItems items) {
+            adapter.addAll(items.getItems());
+            progressContainer.setVisibility(View.INVISIBLE);
+            if (getSearchQuery() != null) {
+                Toast.makeText(getActivity(), items.getTotal() + " items found", Toast.LENGTH_SHORT).show();
+            }
+            super.onPostExecute(items);
+        }
+
+    }
+
+/*
+    private class SearchTask extends AsyncTask<Integer, Void, FlickrItems> {
+
+        @Override
+        protected FlickrItems doInBackground(Integer... params) {
+            Activity activity = getActivity();
+            if (activity != null) {
+                String query = getSearchQuery();
+                if (query != null) {
+                    return new FlickrFetchr(getActivity()).search(query);
+                }
+            }
+            return new FlickrItems();
+        }
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            progressContainer.setVisibility(View.VISIBLE);
+        }
+
+        @Override
+        protected void onPostExecute(FlickrItems items) {
+            adapter.addAll(items.getItems());
             progressContainer.setVisibility(View.INVISIBLE);
             super.onPostExecute(items);
         }
 
     }
+*/
 
     private class PhotoGalleryGridAdapter extends ArrayAdapter<GalleryItem> {
 
