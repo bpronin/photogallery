@@ -12,14 +12,18 @@ import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.util.Log;
-import android.view.*;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * A placeholder fragment containing a simple view.
@@ -43,6 +47,9 @@ public class PhotoGalleryFragment extends Fragment {
         setHasOptionsMenu(true);
         setupThumbnailDownloader();
         adapter = new PhotoGalleryGridAdapter(getActivity());
+
+//        getActivity().startService(new Intent(getActivity(), PollService.class));
+//        PollService.setServiceAlarm(getActivity(), true);
     }
 
     @Override
@@ -59,7 +66,7 @@ public class PhotoGalleryFragment extends Fragment {
 
         setupProgressBar(view);
         setupGrid(view);
-        updateItems(0);
+//        updateItems(0);
 
         return view;
     }
@@ -88,6 +95,17 @@ public class PhotoGalleryFragment extends Fragment {
     }
 
     @Override
+    public void onPrepareOptionsMenu(Menu menu) {
+        super.onPrepareOptionsMenu(menu);
+        MenuItem toggleItem = menu.findItem(R.id.menu_item_toggle_polling);
+        if (PollService.isServiceAlarmOn(getActivity())) {
+            toggleItem.setTitle(R.string.stop_polling);
+        } else {
+            toggleItem.setTitle(R.string.start_polling);
+        }
+    }
+
+    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.menu_item_search:
@@ -99,6 +117,12 @@ public class PhotoGalleryFragment extends Fragment {
                         .putString(FlickrFetchr.PREF_SEARCH_QUERY, null)
                         .commit();
                 updateItems(0);
+                return true;
+            case R.id.menu_item_toggle_polling:
+                boolean shouldStartAlarm = !PollService.isServiceAlarmOn(getActivity());
+                PollService.setServiceAlarm(getActivity(), shouldStartAlarm);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
+                    getActivity().invalidateOptionsMenu();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);

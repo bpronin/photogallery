@@ -28,6 +28,7 @@ public class FlickrFetchr {
     public static final String EXTRA_SMALL_URL = "url_s";
     private static final String PARAM_EXTRAS = "extras";
     private static final String PARAM_TEXT = "text";
+    public static final String PREF_LAST_RESULT_ID = "lastResultId";
 
     private final String apiKey;
 
