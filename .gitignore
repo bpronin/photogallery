@@ -3,3 +3,4 @@
 .idea
 build
 app/src/main/res/values/frikr.xml
+*.iml
