@@ -161,7 +161,10 @@ public class PhotoGalleryFragment extends VisibleFragment {
             public void onItemClick(AdapterView<?> gridView, View view, int pos, long id) {
                 GalleryItem item = adapter.getItem(pos);
                 Uri uri = Uri.parse(item.getPhotoPageUrl());
-                Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+//                Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                Intent intent = new Intent(getActivity(), PhotoPageActivity.class);
+                intent.setData(uri);
+
                 startActivity(intent);
             }
         });
